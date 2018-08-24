@@ -15,6 +15,9 @@ flask-login = "*"
 coverage = "*"
 flask-mail = "*"
 pyjwt = "*"
+flask-bootstrap = "*"
+flask-moment = "*"
+flask-babel = "*"
 
 
 [dev-packages]
