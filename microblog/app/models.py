@@ -15,6 +15,50 @@ from flask import current_app
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 from app import db, login
+from app.search import query_index, add_to_index, remove_from_index
+
+
+class SearchableMixin(object):
+    """
+    before_commit()和after_commit()方法分别对应来自SQLAlchemy的两个事件
+    因为会话还没有提交，所以我可以查看并找出将要添加，修改和删除的对象，如session.new，session.dirty和session.deleted
+    这些对象在会话提交后不再可用，所以我需要在提交之前保存它们。
+    """
+
+    @classmethod
+    def search(cls, expression, page, per_page):
+        """"""
+        ids, total = query_index(cls.__tablename__, expression, page, per_page)
+        if total == 0:
+            return cls.query.filter_by(id=0), 0
+        when = []
+        for i in range(len(ids)):
+            when.append((ids[i], i))
+        # case 该语句需要用于确保数据库中的结果与给定ID的顺序相同
+        return cls.query.filter(cls.id.in_(ids)).order_by(db.case(when, value=cls.id)), total
+
+    @classmethod
+    def before_commit(cls, session):
+        session._changes = {
+            'add': [obj for obj in session.new if isinstance(obj, cls)],
+            'update': [obj for obj in session.dirty if isinstance(obj, cls)],
+            'delete': [obj for obj in session.deleted if isinstance(obj, cls)]
+        }
+
+    @classmethod
+    def after_commit(cls, session):
+        for obj in session._changes['add']:
+            add_to_index(cls.__tablename__, obj)
+        for obj in session._changes['update']:
+            add_to_index(cls.__tablename__, obj)
+        for obj in session._changes['delete']:
+            remove_from_index(cls.__tablename__, obj)
+        session._changes = None
+
+    @classmethod
+    def reindex(cls):
+        for obj in cls.query:
+            add_to_index(cls.__tablename__, obj)
 
 
 @login.user_loader
@@ -89,7 +133,8 @@ class User(UserMixin, db.Model):
         return User.query.get(id)
 
 
-class Post(db.Model):
+class Post(SearchableMixin, db.Model):
+    __searchable__ = ['body']
     id = db.Column(db.Integer, primary_key=True)
     body = db.Column(db.String(140))
     timestamp = db.Column(db.DateTime, index=True, default=datetime.utcnow)
@@ -98,3 +143,7 @@ class Post(db.Model):
 
     def __repr__(self):
         return '<Post {}>'.format(self.body)
+
+
+db.event.listen(db.session, 'before_commit', Post.before_commit)
+db.event.listen(db.session, 'after_commit', Post.after_commit)

@@ -6,9 +6,11 @@ Created on: 8/29/18 5:42 PM
 Author: feng
 Description : 
 """
+from flask import request
 from flask_wtf import FlaskForm
 from wtforms import StringField, TextAreaField, SubmitField
 from wtforms.validators import DataRequired, Length, ValidationError
+from flask_babel import lazy_gettext as _l
 
 from app.models import User
 
@@ -32,3 +34,14 @@ class EditProfileForm(FlaskForm):
 class PostForm(FlaskForm):
     post = TextAreaField('Say something', validators=[DataRequired(), Length(min=1, max=140)])
     submit = SubmitField('Submit')
+
+
+class SearchForm(FlaskForm):
+    q = StringField(_l('Search'), validators=[DataRequired()])
+
+    def __init__(self, *args, **kwargs):
+        if 'formdata' not in kwargs:
+            kwargs['formdata'] = request.args
+        if 'csrf_enabled' not in kwargs:
+            kwargs['csrf_enabled'] = False
+        super(SearchForm, self).__init__(*args, **kwargs)

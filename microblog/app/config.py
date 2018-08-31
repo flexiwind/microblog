@@ -12,6 +12,7 @@ class Config(object):
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     POST_PER_PAGE = int(os.environ.get('POST_PER_PAGE')) or 8
     LANGUAGES = ['en', 'zh']
+    ELASTICSEARCH_URL=os.environ.get('ELASTICSEARCH_URL')
 
     MAIL_SERVER = os.environ.get('MAIL_SERVER')
     MAIL_PORT = int(os.environ.get('MAIL_PORT') or 25)
