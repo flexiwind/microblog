@@ -21,7 +21,7 @@ from flask_login import (
     current_user,
     login_required,
 )
-from guess_language import guess_language
+# from guess_language import guess_language
 from app import db
 from app.main.forms import (
     EditProfileForm,
@@ -50,7 +50,8 @@ def before_request():
 def index():
     form = PostForm()
     if form.validate_on_submit():
-        language = guess_language(form.post.data)
+        # language = guess_language(form.post.data)
+        language = ""
         if language == "UNKNOWN" or len(language) > 5:
             language = ""
         post = Post(body=form.post.data, author=current_user, language=language)
